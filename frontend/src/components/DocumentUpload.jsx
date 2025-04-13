@@ -1,20 +1,23 @@
 import React from 'react';
 
-const DocumentUpload = ({ onUploadSuccess, onError, setLoading }) => {
+const DocumentUpload = ({ chatId, onUploadSuccess, onError, setLoading }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const file = e.target.file.files[0];
-    if (!file) return;
+    const files = e.target.file.files;
+    if (!files.length) return;
 
     setLoading(true);
-    
+
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('chat_id', chatId);
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
 
       const response = await fetch('http://localhost:8000/upload', {
         method: 'POST',
-        body: formData
+        body: formData,
       });
 
       if (!response.ok) {
@@ -31,12 +34,13 @@ const DocumentUpload = ({ onUploadSuccess, onError, setLoading }) => {
 
   return (
     <div className="upload-container">
-      <h2>Загрузите документ</h2>
+      <h2>Загрузите документы</h2>
       <form onSubmit={handleSubmit}>
         <input
           type="file"
           name="file"
-          accept=".docx"
+          multiple
+          accept=".docx,.pdf,.xlsx"
           required
         />
         <button type="submit">Загрузить</button>

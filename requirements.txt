@@ -5,6 +5,10 @@ python-multipart>=0.0.6
 openai>=0.27.8
 python-docx>=0.8.11
 numpy>=1.24.3
-faiss-cpu>=1.7.4  # или faiss-gpu для CUDA
+faiss-cpu>=1.7.4
 pydantic>=1.10.7
 typing-extensions>=4.5.0
+openpyxl>=3.1.2
+pdfplumber>=0.10.3
+pickle-mixin
+datasketch>=1.5.8
