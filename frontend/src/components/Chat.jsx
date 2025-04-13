@@ -3,15 +3,18 @@ import React, { useState, useEffect, useRef } from 'react';
 const Chat = ({ chatId }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [isDeepThink, setIsDeepThink] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
     const userMessage = { text: input, sender: 'user' };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setIsLoading(true);
 
     try {
       const response = await fetch('http://localhost:8000/chat', {
@@ -19,22 +22,59 @@ const Chat = ({ chatId }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          question: input
+          question: input,
+          deep_think: isDeepThink
         })
       });
 
       const data = await response.json();
-      const botMessage = {
-        text: data.answer,
-        sender: 'bot'
-      };
 
-      setMessages(prev => [...prev, botMessage]);
+      // Форматируем ответ в зависимости от режима
+      let botMessages = [];
+
+      if (isDeepThink && data.initial_answer) {
+        // Режим DeepThink - показываем процесс мышления
+        botMessages.push(
+          {
+            text: `[Первоначальный ответ]:\n${data.initial_answer}`,
+            sender: 'bot',
+            type: 'initial'
+          },
+          {
+            text: `[Анализ и улучшение]:\n${data.critique}`,
+            sender: 'bot',
+            type: 'critique'
+          },
+          {
+            text: `[Итоговый ответ]:\n${data.answer}`,
+            sender: 'bot',
+            type: 'final'
+          }
+        );
+      } else {
+        // Обычный режим
+        botMessages.push({
+          text: data.answer,
+          sender: 'bot'
+        });
+      }
+
+      // Форматируем текст с переносами строк
+      const formattedMessages = botMessages.map(msg => ({
+        ...msg,
+        text: msg.text.split('\n').map((line, index) => (
+          <p key={index}>{line}</p>
+        ))
+      }));
+
+      setMessages(prev => [...prev, ...formattedMessages]);
     } catch (error) {
       setMessages(prev => [
         ...prev,
         { text: 'Ошибка соединения с сервером', sender: 'bot', error: true }
       ]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -44,24 +84,51 @@ const Chat = ({ chatId }) => {
 
   return (
     <div className="chat-container">
+      <div className="chat-header">
+        <div className="chat-title">Чат с документом</div>
+        <div className="deepthink-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={isDeepThink}
+              onChange={() => setIsDeepThink(!isDeepThink)}
+            />
+            <span className="slider round"></span>
+          </label>
+          <span className="deepthink-label">DeepThink</span>
+        </div>
+      </div>
+
       <div className="messages">
         {messages.map((msg, i) => (
-          <div key={i} className={`message ${msg.sender}`}>
-            {msg.text.split('\n').map((line, index) => (
+          <div
+            key={i}
+            className={`message ${msg.sender} ${msg.type || ''}`}
+          >
+            {Array.isArray(msg.text) ? msg.text : msg.text.split('\n').map((line, index) => (
               <p key={index}>{line}</p>
             ))}
           </div>
         ))}
+        {isLoading && (
+          <div className="message bot loading">
+            <p>Думаю...</p>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
+
       <form onSubmit={handleSubmit} className="input-form">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Задайте вопрос о документе..."
+          disabled={isLoading}
         />
-        <button type="submit">Отправить</button>
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? 'Отправка...' : 'Отправить'}
+        </button>
       </form>
     </div>
   );
