@@ -1,15 +1,17 @@
-# main.py
+# backend/main.py
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-from backend.app import VectorBackend
+from backend.document_loader import DocumentLoader
+from backend.vector_db import VectorDB
 import os
 import tempfile
 
 app = FastAPI()
-backend = VectorBackend()
+loader = DocumentLoader()
+db = VectorDB()
 
-# CORS middleware
+# CORS middleware (оставляем как было)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,10 +19,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Оригинальные разрешенные расширения (теперь методы берутся из DocumentLoader)
 ALLOWED_EXTENSIONS = {
-    ".docx": backend.load_docx_chunks,
-    ".pdf": backend.load_pdf_chunks,
-    ".xlsx": backend.load_xlsx_chunks
+    ".docx": loader.load_docx_chunks,
+    ".pdf": loader.load_pdf_chunks,
+    ".xlsx": loader.load_xlsx_chunks
 }
 
 @app.post("/upload")
@@ -45,8 +48,12 @@ async def upload_files(files: List[UploadFile] = File(...)):
             chunks = load_method(file_path)
             all_chunks.extend(chunks)
 
-        # Создаём FAISS индекс из всех чанков
-        backend.build_faiss_index()
+            # Удаляем временный файл
+            os.unlink(file_path)
+
+        # Передаем чанки в VectorDB и строим индекс
+        db.set_chunks(all_chunks)
+        db.build_faiss_index()
 
         return {
             "status": "success",
@@ -57,11 +64,10 @@ async def upload_files(files: List[UploadFile] = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке файлов: {str(e)}")
 
-
 @app.post("/chat")
 async def chat_endpoint(question: dict):
     """Получение ответа на основе загруженных документов."""
-    if not backend.index:
+    if not db.index:
         raise HTTPException(status_code=400, detail="Документы не загружены")
 
     user_question = question.get("question", "").strip()
@@ -69,7 +75,8 @@ async def chat_endpoint(question: dict):
         raise HTTPException(status_code=400, detail="Вопрос не должен быть пустым")
 
     try:
-        top_chunks = backend.search_similar_chunks(user_question)
+        # Поиск релевантных чанков
+        top_chunks = db.search_similar_chunks(user_question)
         context = "\n---\n".join(top_chunks)
 
         prompt = f"""
@@ -80,35 +87,34 @@ async def chat_endpoint(question: dict):
         
         Вопрос: {user_question}
         
-        ответ должен быть максимально точным.
+        Ответ должен быть максимально точным.
         """
 
-        response = backend.client.chat.completions.create(
-            model="gpt-4o",  # Модель, которая будет использоваться
+        # Генерация ответа с помощью GPT (используем клиента из VectorDB)
+        response = db.client.chat.completions.create(
+            model="gpt-4o",
             messages=[{
                 "role": "user",
                 "content": prompt
             }],
-            temperature=0.3  # Оптимальное значение для точных и структурированных ответов
+            temperature=0.3
         )
 
-        # Форматирование ответа: с правильными разделами
+        # Форматирование ответа
         answer = response.choices[0].message.content.strip()
-
-        # Теперь гарантируем, что вывод будет более структурированным
-        formatted_answer = answer.replace("- ", "\n- ").replace("\n\n",
-                                                                "\n")  # Стандартизируем список и убираем лишние отступы
-
-        # Пример: если нет четких разделений, можно добавить их вручную
-        formatted_answer = formatted_answer.replace("—", "\n—")  # Добавление нового абзаца перед длинными списками
+        formatted_answer = answer.replace("- ", "\n- ").replace("\n\n", "\n")
+        formatted_answer = formatted_answer.replace("—", "\n—")
 
         return {"answer": formatted_answer}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка обработки запроса: {str(e)}")
 
-
 @app.get("/health")
 def health_check():
     """Проверка статуса сервиса."""
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "index_ready": db.index is not None,
+        "chunks_loaded": len(db.chunks) if db.chunks else 0
+    }
