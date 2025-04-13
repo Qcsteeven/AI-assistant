@@ -1,6 +1,6 @@
 import React from 'react';
 
-const DocumentUpload = ({ onUploadSuccess, onError, setLoading }) => {
+const DocumentUpload = ({ chatId, onUploadSuccess, onError, setLoading }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const files = e.target.file.files;
@@ -10,13 +10,14 @@ const DocumentUpload = ({ onUploadSuccess, onError, setLoading }) => {
 
     try {
       const formData = new FormData();
+      formData.append('chat_id', chatId);
       for (let i = 0; i < files.length; i++) {
-        formData.append('files', files[i]); // 'files' должен совпадать с параметром в FastAPI
+        formData.append('files', files[i]);
       }
 
       const response = await fetch('http://localhost:8000/upload', {
         method: 'POST',
-        body: formData
+        body: formData,
       });
 
       if (!response.ok) {

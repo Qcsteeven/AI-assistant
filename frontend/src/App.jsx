@@ -1,12 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DocumentUpload from './components/DocumentUpload';
 import Chat from './components/Chat';
 import './styles.css';
 
 function App() {
+  const [chatId, setChatId] = useState(null);
   const [documentUploaded, setDocumentUploaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [chats, setChats] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+
+  // Создание нового чата
+  const createNewChat = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:8000/chat/new', {
+        method: 'POST',
+      });
+      const data = await response.json();
+      const newChat = {
+        id: data.chat_id,
+        name: `Чат ${chats.length + 1}`,
+        createdAt: new Date().toLocaleString()
+      };
+      
+      setChats([...chats, newChat]);
+      setChatId(data.chat_id);
+      setDocumentUploaded(false);
+      setError(null);
+    } catch (err) {
+      setError("Не удалось создать новый чат");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Создаем первый чат при загрузке
+  useEffect(() => {
+    createNewChat();
+  }, []);
 
   const handleUploadSuccess = () => {
     setDocumentUploaded(true);
@@ -18,22 +51,49 @@ function App() {
     setDocumentUploaded(false);
   };
 
+  const switchChat = (chat) => {
+    setChatId(chat.id);
+    setDocumentUploaded(true); // Предполагаем, что в этом чате уже есть документы
+  };
+
   return (
     <div className="app">
       <header>
         <h1>AI Document Chat</h1>
+        <button onClick={createNewChat} className="new-chat-btn">
+          + Новый чат
+        </button>
         {error && <div className="error-message">{error}</div>}
       </header>
 
+      <div className="chat-sidebar">
+        <h3>Мои чаты</h3>
+        <ul>
+          {chats.map(chat => (
+            <li 
+              key={chat.id} 
+              className={chat.id === chatId ? 'active' : ''}
+              onClick={() => switchChat(chat)}
+            >
+              {chat.name}
+              <span className="chat-date">{chat.createdAt}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <main>
-        {!documentUploaded ? (
-          <DocumentUpload 
+        {!chatId ? (
+          <p>Создание сессии...</p>
+        ) : !documentUploaded ? (
+          <DocumentUpload
+            chatId={chatId}
             onUploadSuccess={handleUploadSuccess}
             onError={handleUploadError}
             setLoading={setLoading}
           />
         ) : (
-          <Chat />
+          <Chat chatId={chatId} />
         )}
       </main>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const Chat = () => {
+const Chat = ({ chatId }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -17,7 +17,10 @@ const Chat = () => {
       const response = await fetch('http://localhost:8000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: input })
+        body: JSON.stringify({
+          chat_id: chatId,
+          question: input
+        })
       });
 
       const data = await response.json();
@@ -26,15 +29,7 @@ const Chat = () => {
         sender: 'bot'
       };
 
-      // Разделяем ответ на абзацы, если в нем есть символы новой строки
-      const formattedMessage = botMessage.text.split('\n').map((line, index) => (
-        <p key={index}>{line}</p>
-      ));
-
-      setMessages(prev => [
-        ...prev,
-        { ...botMessage, text: formattedMessage }
-      ]);
+      setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       setMessages(prev => [
         ...prev,
@@ -52,8 +47,7 @@ const Chat = () => {
       <div className="messages">
         {messages.map((msg, i) => (
           <div key={i} className={`message ${msg.sender}`}>
-            {/* Отображаем разделенные абзацы для ответа бота */}
-            {Array.isArray(msg.text) ? msg.text : msg.text.split('\n').map((line, index) => (
+            {msg.text.split('\n').map((line, index) => (
               <p key={index}>{line}</p>
             ))}
           </div>
