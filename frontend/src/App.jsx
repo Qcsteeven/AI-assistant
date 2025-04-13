@@ -9,9 +9,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [chats, setChats] = useState([]);
-  const [activeChat, setActiveChat] = useState(null);
 
-  // Создание нового чата
   const createNewChat = async () => {
     setLoading(true);
     try {
@@ -24,7 +22,7 @@ function App() {
         name: `Чат ${chats.length + 1}`,
         createdAt: new Date().toLocaleString()
       };
-      
+
       setChats([...chats, newChat]);
       setChatId(data.chat_id);
       setDocumentUploaded(false);
@@ -36,7 +34,6 @@ function App() {
     }
   };
 
-  // Создаем первый чат при загрузке
   useEffect(() => {
     createNewChat();
   }, []);
@@ -53,36 +50,43 @@ function App() {
 
   const switchChat = (chat) => {
     setChatId(chat.id);
-    setDocumentUploaded(true); // Предполагаем, что в этом чате уже есть документы
+    setDocumentUploaded(true);
   };
 
   return (
     <div className="app">
-      <header>
-        <h1>AI Document Chat</h1>
+      {/* Шапка */}
+      <header className="header">
         <button onClick={createNewChat} className="new-chat-btn">
           + Новый чат
         </button>
-        {error && <div className="error-message">{error}</div>}
+        <h1 className="header-title">AI Document Chat</h1>
+        <div style={{ width: '100px' }}></div> {/* Для выравнивания */}
       </header>
 
-      <div className="chat-sidebar">
-        <h3>Мои чаты</h3>
-        <ul>
+      {/* Боковая панель */}
+      <div className="sidebar">
+        <div className="sidebar-header">
+          <h3 className="sidebar-title">Мои чаты</h3>
+        </div>
+        <ul className="chat-list">
           {chats.map(chat => (
-            <li 
-              key={chat.id} 
-              className={chat.id === chatId ? 'active' : ''}
+            <li
+              key={chat.id}
+              className={`chat-item ${chat.id === chatId ? 'active' : ''}`}
               onClick={() => switchChat(chat)}
             >
-              {chat.name}
-              <span className="chat-date">{chat.createdAt}</span>
+              <div className="chat-name">{chat.name}</div>
+              <div className="chat-date">{chat.createdAt}</div>
             </li>
           ))}
         </ul>
       </div>
 
-      <main>
+      {/* Основное содержимое */}
+      <main className="main-content">
+        {error && <div className="error-message">{error}</div>}
+
         {!chatId ? (
           <p>Создание сессии...</p>
         ) : !documentUploaded ? (
@@ -96,12 +100,6 @@ function App() {
           <Chat chatId={chatId} />
         )}
       </main>
-
-      {loading && (
-        <div className="loading-overlay">
-          <div className="spinner"></div>
-        </div>
-      )}
     </div>
   );
 }

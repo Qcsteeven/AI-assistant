@@ -29,11 +29,8 @@ const Chat = ({ chatId }) => {
 
       const data = await response.json();
 
-      // Форматируем ответ в зависимости от режима
       let botMessages = [];
-
       if (isDeepThink && data.initial_answer) {
-        // Режим DeepThink - показываем процесс мышления
         botMessages.push(
           {
             text: `[Первоначальный ответ]:\n${data.initial_answer}`,
@@ -52,14 +49,12 @@ const Chat = ({ chatId }) => {
           }
         );
       } else {
-        // Обычный режим
         botMessages.push({
           text: data.answer,
           sender: 'bot'
         });
       }
 
-      // Форматируем текст с переносами строк
       const formattedMessages = botMessages.map(msg => ({
         ...msg,
         text: msg.text.split('\n').map((line, index) => (
@@ -87,15 +82,15 @@ const Chat = ({ chatId }) => {
       <div className="chat-header">
         <div className="chat-title">Чат с документом</div>
         <div className="deepthink-toggle">
-          <label>
+          <span className="deepthink-label">DeepThink</span>
+          <label className="deepthink-switch">
             <input
               type="checkbox"
               checked={isDeepThink}
               onChange={() => setIsDeepThink(!isDeepThink)}
             />
-            <span className="slider round"></span>
+            <span className="deepthink-slider"></span>
           </label>
-          <span className="deepthink-label">DeepThink</span>
         </div>
       </div>
 
