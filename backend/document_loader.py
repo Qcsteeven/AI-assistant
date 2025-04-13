@@ -84,7 +84,7 @@ class DocumentLoader:
         self._append_buffer(buffer, chunks)
         return self._filter_and_add_chunks(chunks)
 
-    def load_pdf_chunks(self, path: str, chunk_size: int = 1000) -> List[str]:
+    def load_pdf_chunks(self, path: str, chunk_size: int = 2000) -> List[str]:
         with pdfplumber.open(path) as pdf:
             chunks = []
             buffer = ""
@@ -102,7 +102,7 @@ class DocumentLoader:
             self._append_buffer(buffer, chunks)
             return self._filter_and_add_chunks(chunks)
 
-    def load_xlsx_chunks(self, path: str, chunk_size: int = 1000) -> List[str]:
+    def load_xlsx_chunks(self, path: str, chunk_size: int = 2000) -> List[str]:
         wb = openpyxl.load_workbook(path)
         sheet = wb.active
         chunks = []
