@@ -19,15 +19,27 @@ const Chat = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: input })
       });
-      
+
       const data = await response.json();
-      setMessages(prev => [...prev, { text: data.answer, sender: 'bot' }]);
+      const botMessage = {
+        text: data.answer,
+        sender: 'bot'
+      };
+
+      // Разделяем ответ на абзацы, если в нем есть символы новой строки
+      const formattedMessage = botMessage.text.split('\n').map((line, index) => (
+        <p key={index}>{line}</p>
+      ));
+
+      setMessages(prev => [
+        ...prev,
+        { ...botMessage, text: formattedMessage }
+      ]);
     } catch (error) {
-      setMessages(prev => [...prev, { 
-        text: 'Ошибка соединения с сервером', 
-        sender: 'bot',
-        error: true 
-      }]);
+      setMessages(prev => [
+        ...prev,
+        { text: 'Ошибка соединения с сервером', sender: 'bot', error: true }
+      ]);
     }
   };
 
@@ -40,7 +52,10 @@ const Chat = () => {
       <div className="messages">
         {messages.map((msg, i) => (
           <div key={i} className={`message ${msg.sender}`}>
-            {msg.text}
+            {/* Отображаем разделенные абзацы для ответа бота */}
+            {Array.isArray(msg.text) ? msg.text : msg.text.split('\n').map((line, index) => (
+              <p key={index}>{line}</p>
+            ))}
           </div>
         ))}
         <div ref={messagesEndRef} />
